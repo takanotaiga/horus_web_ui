@@ -23,6 +23,10 @@
     {
       "id": "Page1",
       "isDefault": true
+    },
+    {
+      "id": "My-bucket",
+      "isDefault": false
     }
   ],
   "unpublishedAppLayout": {

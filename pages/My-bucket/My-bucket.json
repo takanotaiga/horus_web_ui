@@ -1,11 +1,11 @@
 {
-  "gitSyncId": "685f3de44b23856afebaf0d1_98c1a3e4-7def-4005-b4d0-e974eee26358",
+  "gitSyncId": "685f3de44b23856afebaf0d1_e546158a-4e12-40f0-bb3f-ae5ea7ec9270",
   "unpublishedPage": {
     "layouts": [
       {
         "dsl": {
           "backgroundColor": "none",
-          "bottomRow": 380,
+          "bottomRow": 850,
           "canExtend": true,
           "containerStyle": "none",
           "detachFromLayout": true,
@@ -17,7 +17,7 @@
           "parentRowSpace": 1,
           "rightColumn": 1174,
           "snapColumns": 64,
-          "snapRows": 125,
+          "snapRows": 129,
           "topRow": 0,
           "type": "CANVAS_WIDGET",
           "version": 94,
@@ -26,7 +26,7 @@
         }
       }
     ],
-    "name": "Page1",
-    "slug": "page1"
+    "name": "My-bucket",
+    "slug": "my-bucket"
   }
 }
