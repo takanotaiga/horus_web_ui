@@ -1,0 +1,66 @@
+{
+  "backgroundColor": "#FFFFFF",
+  "borderColor": "{{appsmith.theme.colors.backgroundColor}}",
+  "borderRadius": "1rem",
+  "borderWidth": "1",
+  "bottomRow": 8,
+  "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+  "defaultModel": "",
+  "dynamicBindingPathList": [
+    {
+      "key": "theme"
+    },
+    {
+      "key": "borderColor"
+    }
+  ],
+  "dynamicHeight": "FIXED",
+  "dynamicPropertyPathList": [
+    {
+      "key": "borderRadius"
+    }
+  ],
+  "dynamicTriggerPathList": [
+    {
+      "key": "init"
+    }
+  ],
+  "events": [
+    "init"
+  ],
+  "init": "{{Api1.run().then(() => {\n  showAlert('Good News!', 'success');\n}).catch(() => {\n  showAlert('Bad News :(', 'error');\n});}}",
+  "isCanvas": false,
+  "isLoading": false,
+  "isSearchWildcard": true,
+  "isVisible": true,
+  "key": "dmye5tsihi",
+  "leftColumn": 0,
+  "maxDynamicHeight": 9000,
+  "minDynamicHeight": 4,
+  "mobileBottomRow": 55,
+  "mobileLeftColumn": 5,
+  "mobileRightColumn": 28,
+  "mobileTopRow": 25,
+  "needsErrorInfo": false,
+  "parentColumnSpace": 17.9375,
+  "parentId": "9yxo4wxha2",
+  "parentRowSpace": 10,
+  "renderMode": "CANVAS",
+  "rightColumn": 62,
+  "srcDoc": {
+    "css": "@charset \"UTF-8\";\n.app {\n  height: calc(var(--appsmith-ui-height) * 1px);\n  width: calc(var(--appsmith-ui-width) * 1px);\n  justify-content: center;\n  border-radius: var(--appsmith-theme-borderRadius);\n  box-shadow: var(--appsmith-theme-boxShadow);\n  box-sizing: border-box;\n  font-family: system-ui;\n  background: #fff;\n}\n\n/* アップロードコンテナを幅いっぱいに */\n.upload-container {\n  width: 100%;\n  height: 100%;\n}\n\n/* ボタンを幅いっぱいにして、文字色黒、背景白に */\n.upload-button {\n  display: block; /* ブロック要素にして幅指定を効かせる */\n  width: 100%; /* 親要素いっぱい */\n  height: 100%;\n  padding: calc(var(--appsmith-ui-height) * 0.5px - 16px) 0; /* お好みで上下の余白を調整 */\n  color: #000; /* 文字色：黒 */\n  background-color: #fff; /* 背景色：白 */\n  border: none; /* 枠線なし */\n  border-radius: 0; /* 角丸を外したい場合 */\n  box-sizing: border-box;\n  font-size: 16px; /* お好みでフォントサイズ調整 */\n  cursor: pointer;\n}\n\n.upload-button:hover,\n.upload-button:focus {\n  background-color: #fff;\n  outline: none;\n}",
+    "html": "<!-- no need to write html, head, body tags, it is handled by the widget -->\n<div id=\"root\"></div>\n",
+    "js": "import React from \"https://esm.sh/react@18.2.0\";\nimport ReactDOM from \"https://esm.sh/react-dom@18.2.0\";\nfunction App() {\n  const fileInputRef = React.useRef(null);\n  const [status, setStatus] = React.useState('idle'); // 'idle' | 'uploading' | 'complete'\n  const [progress, setProgress] = React.useState(0); // 全体進捗用（任意）\n\n  const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk\n  const BACKEND_URL = \"http://dpc2500015.local:65304\";\n\n  // 単一ファイルをチャンクアップロードするヘルパー\n  const uploadFile = async (file, fileIndex, totalFiles) => {\n    console.log(`Uploading file ${fileIndex + 1}/${totalFiles}: ${file.name}`);\n    // ステータスを更新するならここで setFilesStatus(...)\n    // ローカルな進捗をゼロに\n    setProgress(0);\n\n    // 1. initiate\n    const initForm = new FormData();\n    initForm.append(\"filename\", file.name);\n    initForm.append(\"content_type\", file.type);\n    const initRes = await fetch(`${BACKEND_URL}/upload/initiate`, {\n      method: \"POST\",\n      body: initForm\n    });\n    const {\n      upload_id,\n      key\n    } = await initRes.json();\n\n    // 2. chunk upload\n    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);\n    const parts = [];\n    for (let i = 0; i < totalChunks; i++) {\n      const start = i * CHUNK_SIZE;\n      const end = Math.min(start + CHUNK_SIZE, file.size);\n      const blob = file.slice(start, end);\n      const partForm = new FormData();\n      partForm.append(\"upload_id\", upload_id);\n      partForm.append(\"key\", key);\n      partForm.append(\"part_number\", i + 1);\n      partForm.append(\"chunk\", blob, file.name);\n      const partRes = await fetch(`${BACKEND_URL}/upload/${upload_id}/part`, {\n        method: \"POST\",\n        body: partForm\n      });\n      const {\n        etag\n      } = await partRes.json();\n      parts.push({\n        part_number: i + 1,\n        etag\n      });\n\n      // ファイル内進捗\n      const pct = Math.round((i + 1) / totalChunks * 100);\n      console.log(`  File ${fileIndex + 1}: chunk ${i + 1}/${totalChunks} (${pct}%)`);\n      setProgress(pct);\n    }\n\n    // 3. complete\n    await fetch(`${BACKEND_URL}/upload/complete`, {\n      method: \"POST\",\n      headers: {\n        \"Content-Type\": \"application/json\"\n      },\n      body: JSON.stringify({\n        key,\n        upload_id,\n        parts\n      })\n    });\n    console.log(`File ${fileIndex + 1} complete: ${file.name}`);\n    // Appsmith イベント\n    appsmith.triggerEvent(\"onUploadComplete\", {\n      key\n    });\n  };\n\n  // ファイル選択後に呼ばれる\n  const handleFileChange = async e => {\n    const files = Array.from(e.target.files);\n    if (files.length === 0) return;\n    setStatus('uploading');\n    try {\n      for (let idx = 0; idx < files.length; idx++) {\n        await uploadFile(files[idx], idx, files.length);\n      }\n      setStatus('complete');\n      // 3秒後にリセット\n      setTimeout(() => {\n        setStatus('idle');\n        setProgress(0);\n      }, 3000);\n    } catch (err) {\n      console.error(\"複数ファイルアップロードエラー:\", err);\n      alert(\"アップロード中にエラーが発生しました\");\n      setStatus('idle');\n      setProgress(0);\n    }\n  };\n  const handleUploadClick = () => {\n    if (status === 'idle') {\n      fileInputRef.current.click();\n    }\n  };\n  const buttonLabel = {\n    idle: 'Upload',\n    uploading: `Uploading... (${progress}%)`,\n    complete: 'Complete'\n  }[status];\n  return /*#__PURE__*/React.createElement(\"div\", {\n    className: \"upload-container\"\n  }, /*#__PURE__*/React.createElement(\"input\", {\n    type: \"file\",\n    ref: fileInputRef,\n    style: {\n      display: \"none\"\n    },\n    onChange: handleFileChange,\n    multiple: true\n  }), /*#__PURE__*/React.createElement(\"button\", {\n    className: \"upload-button\",\n    onClick: handleUploadClick,\n    disabled: status === 'uploading'\n  }, buttonLabel));\n}\nappsmith.onReady(() => {\n  ReactDOM.render(/*#__PURE__*/React.createElement(App, null), document.getElementById(\"root\"));\n});"
+  },
+  "theme": "{{appsmith.theme}}",
+  "topRow": 1,
+  "type": "CUSTOM_WIDGET",
+  "uncompiledSrcDoc": {
+    "css": ".app {\n  height: calc(var(--appsmith-ui-height) * 1px);\n  width: calc(var(--appsmith-ui-width) * 1px);\n  justify-content: center;\n  border-radius: var(--appsmith-theme-borderRadius);\n  box-shadow: var(--appsmith-theme-boxShadow);\n  box-sizing: border-box;\n  font-family: system-ui;\n  background: #fff;\n}\n/* アップロードコンテナを幅いっぱいに */\n.upload-container {\n  width: 100%;\n\theight: 100%;\n}\n\n/* ボタンを幅いっぱいにして、文字色黒、背景白に */\n.upload-button {\n  display: block;       /* ブロック要素にして幅指定を効かせる */\n  width: 100%;          /* 親要素いっぱい */\n\theight: 100%;\n  padding: calc(var(--appsmith-ui-height) * 0.5px - 16px) 0;      /* お好みで上下の余白を調整 */\n  color: #000;          /* 文字色：黒 */\n  background-color: #fff; /* 背景色：白 */\n  border: none;         /* 枠線なし */\n  border-radius: 0;     /* 角丸を外したい場合 */\n  box-sizing: border-box;\n  font-size: 16px;      /* お好みでフォントサイズ調整 */\n  cursor: pointer;\n}\n\n.upload-button:hover,\n.upload-button:focus {\n  background-color: #fff;\n  outline: none;\n}\n",
+    "html": "<!-- no need to write html, head, body tags, it is handled by the widget -->\n<div id=\"root\"></div>\n",
+    "js": "import React from \"https://esm.sh/react@18.2.0\";\nimport ReactDOM from \"https://esm.sh/react-dom@18.2.0\";\n\nfunction App() {\n  const fileInputRef = React.useRef(null);\n  const [status, setStatus] = React.useState('idle');   // 'idle' | 'uploading' | 'complete'\n  const [progress, setProgress] = React.useState(0);     // 全体進捗用（任意）\n\n  const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB per chunk\n  const BACKEND_URL = \"http://dpc2500015.local:65304\";\n\n  // 単一ファイルをチャンクアップロードするヘルパー\n  const uploadFile = async (file, fileIndex, totalFiles) => {\n    console.log(`Uploading file ${fileIndex + 1}/${totalFiles}: ${file.name}`);\n    // ステータスを更新するならここで setFilesStatus(...)\n    // ローカルな進捗をゼロに\n    setProgress(0);\n\n    // 1. initiate\n    const initForm = new FormData();\n    initForm.append(\"filename\", file.name);\n    initForm.append(\"content_type\", file.type);\n    const initRes = await fetch(`${BACKEND_URL}/upload/initiate`, {\n      method: \"POST\",\n      body: initForm,\n    });\n    const { upload_id, key } = await initRes.json();\n\n    // 2. chunk upload\n    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);\n    const parts = [];\n    for (let i = 0; i < totalChunks; i++) {\n      const start = i * CHUNK_SIZE;\n      const end = Math.min(start + CHUNK_SIZE, file.size);\n      const blob = file.slice(start, end);\n\n      const partForm = new FormData();\n      partForm.append(\"upload_id\", upload_id);\n      partForm.append(\"key\", key);\n      partForm.append(\"part_number\", i + 1);\n      partForm.append(\"chunk\", blob, file.name);\n\n      const partRes = await fetch(`${BACKEND_URL}/upload/${upload_id}/part`, {\n        method: \"POST\",\n        body: partForm,\n      });\n      const { etag } = await partRes.json();\n      parts.push({ part_number: i + 1, etag });\n\n      // ファイル内進捗\n      const pct = Math.round(((i + 1) / totalChunks) * 100);\n      console.log(`  File ${fileIndex + 1}: chunk ${i + 1}/${totalChunks} (${pct}%)`);\n      setProgress(pct);\n    }\n\n    // 3. complete\n    await fetch(`${BACKEND_URL}/upload/complete`, {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({ key, upload_id, parts }),\n    });\n\n    console.log(`File ${fileIndex + 1} complete: ${file.name}`);\n    // Appsmith イベント\n    appsmith.triggerEvent(\"onUploadComplete\", { key });\n  };\n\n  // ファイル選択後に呼ばれる\n  const handleFileChange = async (e) => {\n    const files = Array.from(e.target.files);\n    if (files.length === 0) return;\n\n    setStatus('uploading');\n    try {\n      for (let idx = 0; idx < files.length; idx++) {\n        await uploadFile(files[idx], idx, files.length);\n      }\n      setStatus('complete');\n      // 3秒後にリセット\n      setTimeout(() => {\n        setStatus('idle');\n        setProgress(0);\n      }, 3000);\n    } catch (err) {\n      console.error(\"複数ファイルアップロードエラー:\", err);\n      alert(\"アップロード中にエラーが発生しました\");\n      setStatus('idle');\n      setProgress(0);\n    }\n  };\n\n  const handleUploadClick = () => {\n    if (status === 'idle') {\n      fileInputRef.current.click();\n    }\n  };\n\n  const buttonLabel = {\n    idle: 'Upload',\n    uploading: `Uploading... (${progress}%)`,\n    complete: 'Complete',\n  }[status];\n\n  return (\n    <div className=\"upload-container\">\n      <input\n        type=\"file\"\n        ref={fileInputRef}\n        style={{ display: \"none\" }}\n        onChange={handleFileChange}\n        multiple\n      />\n      <button\n        className=\"upload-button\"\n        onClick={handleUploadClick}\n        disabled={status === 'uploading'}\n      >\n        {buttonLabel}\n      </button>\n    </div>\n  );\n}\n\nappsmith.onReady(() => {\n  ReactDOM.render(<App />, document.getElementById(\"root\"));\n});\n"
+  },
+  "version": 1,
+  "widgetId": "785qbpw3co",
+  "widgetName": "Custom1"
+}
